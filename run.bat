@@ -59,9 +59,9 @@ if not exist "frontend\node_modules" (
 )
 echo.
 
-:: 4. Launch FastAPI Backend Server (Runs from project root to resolve "backend" imports)
+:: 4. Launch FastAPI Backend Server
 echo [3/3] Starting FastAPI Backend on http://127.0.0.1:8000...
-start "Pascal Compiler - FastAPI Backend" cmd /k "call backend\venv\Scripts\activate && python -m uvicorn backend.app:app --host 127.0.0.1 --port 8000"
+start "Pascal Compiler - FastAPI Backend" cmd /k "cd /d backend && call venv\Scripts\activate && python -m uvicorn app:app --host 127.0.0.1 --port 8000"
 echo.
 
 :: 5. Launch React Frontend Server
@@ -76,4 +76,3 @@ echo  - Frontend runs on http://localhost:5173
 echo ===================================================
 echo.
 pause
-

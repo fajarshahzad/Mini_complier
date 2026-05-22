@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
+import CompilerLoader from "../components/CompilerLoader";
 import "./Login.css";
 
 const SAMPLE_CODE_LINES = [
@@ -22,6 +23,13 @@ const SAMPLE_CODE_LINES = [
 
 const BINARY_COLUMNS = 28;
 const BINARY_ROWS = 36;
+const MIN_LOADER_MS = 900;
+const APP_LAUNCHER_MS = 2000;
+
+const waitForLoader = (startedAt) => {
+  const remaining = MIN_LOADER_MS - (Date.now() - startedAt);
+  return remaining > 0 ? new Promise((resolve) => setTimeout(resolve, remaining)) : Promise.resolve();
+};
 
 function buildBinaryColumn(col) {
   const half = Array.from({ length: BINARY_ROWS }, (_, row) =>
@@ -83,14 +91,21 @@ function Login() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [appLaunching, setAppLaunching] = useState(true);
   const [success, setSuccess] = useState("");
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (api.isAuthenticated()) {
-      navigate("/dashboard");
-    }
+    const launchTimer = setTimeout(() => {
+      if (api.isAuthenticated()) {
+        navigate("/dashboard");
+        return;
+      }
+      setAppLaunching(false);
+    }, APP_LAUNCHER_MS);
+
+    return () => clearTimeout(launchTimer);
   }, [navigate]);
 
   const handleSubmit = async (e) => {
@@ -108,19 +123,23 @@ function Login() {
       return;
     }
 
+    const loaderStartedAt = Date.now();
     setLoading(true);
     try {
       if (isRegister) {
         await api.register(username, password);
+        await waitForLoader(loaderStartedAt);
         setSuccess("Account created. You can sign in now.");
         setIsRegister(false);
         setPassword("");
         setConfirmPassword("");
       } else {
         await api.login(username, password);
+        await waitForLoader(loaderStartedAt);
         navigate("/dashboard");
       }
     } catch (err) {
+      await waitForLoader(loaderStartedAt);
       setError(err.message || "An error occurred.");
     } finally {
       setLoading(false);
@@ -135,6 +154,24 @@ function Login() {
     setError("");
     setSuccess("");
   };
+
+  if (appLaunching) {
+    return (
+      <div className="login-container login-launcher">
+        <BinaryRainBackground />
+        <div className="login-launcher-panel">
+          <CompilerLoader
+            launcher
+            label="Launching Pascal Compiler"
+            stages={["Powering chip", "Loading lexer", "Mounting parser", "Preparing workspace"]}
+          />
+          <div className="launcher-progress" aria-hidden="true">
+            <span />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-container">
@@ -214,7 +251,16 @@ function Login() {
             )}
 
             <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? "Please wait…" : isRegister ? "Create account" : "Continue"}
+              {loading ? (
+                <>
+                  <CompilerLoader compact />
+                  <span>{isRegister ? "Creating account..." : "Signing in..."}</span>
+                </>
+              ) : isRegister ? (
+                "Create account"
+              ) : (
+                "Continue"
+              )}
             </button>
           </form>
 

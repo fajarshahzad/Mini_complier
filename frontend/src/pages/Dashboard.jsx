@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
+import CompilerLoader from "../components/CompilerLoader";
 import "./dashboard.css";
 
 const SAMPLES = {
@@ -55,6 +56,14 @@ const MODES = [
   { id: "console", label: "Console", icon: "console" },
 ];
 
+const MIN_LOADER_MS = 1100;
+const DASHBOARD_LAUNCHER_MS = 500;
+
+const waitForLoader = (startedAt) => {
+  const remaining = MIN_LOADER_MS - (Date.now() - startedAt);
+  return remaining > 0 ? new Promise((resolve) => setTimeout(resolve, remaining)) : Promise.resolve();
+};
+
 function NavIcon({ type }) {
   if (type === "editor") {
     return (
@@ -89,6 +98,7 @@ function Dashboard() {
   const [grammarData, setGrammarData] = useState(null);
   const [compilationResult, setCompilationResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [dashboardLaunching, setDashboardLaunching] = useState(true);
   const [error, setError] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [grammarExpanded, setGrammarExpanded] = useState(false);
@@ -110,7 +120,12 @@ function Dashboard() {
       .getGrammar()
       .then((data) => setGrammarData(data))
       .catch((err) => setError("Failed to fetch grammar info: " + err.message));
-    handleCompile();
+    handleCompile({ showLoader: false });
+    const launchTimer = setTimeout(() => {
+      setDashboardLaunching(false);
+    }, DASHBOARD_LAUNCHER_MS);
+
+    return () => clearTimeout(launchTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
@@ -119,8 +134,9 @@ function Dashboard() {
     navigate("/");
   };
 
-  const handleCompile = async () => {
-    setLoading(true);
+  const handleCompile = async ({ showLoader = true } = {}) => {
+    const loaderStartedAt = Date.now();
+    if (showLoader) setLoading(true);
     setError("");
     try {
       const res = await api.compile(code);
@@ -133,7 +149,10 @@ function Dashboard() {
     } catch (err) {
       setError(err.message || "Compilation request failed.");
     } finally {
-      setLoading(false);
+      if (showLoader) {
+        await waitForLoader(loaderStartedAt);
+        setLoading(false);
+      }
     }
   };
 
@@ -463,7 +482,7 @@ function Dashboard() {
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polygon points="5 3 19 12 5 21 5 3" />
                       </svg>
-                      {loading ? "Compiling…" : "Compile"}
+                      {loading ? "Compiling..." : "Compile"}
                     </button>
                   </div>
                 </div>
@@ -747,6 +766,20 @@ function Dashboard() {
             </div>
           )}
         </main>
+        {dashboardLaunching && (
+          <CompilerLoader
+            overlay
+            mark="pascal"
+            label="Loading Pascal workspace"
+          />
+        )}
+        {!dashboardLaunching && loading && (
+          <CompilerLoader
+            overlay
+            label="Compiling Pascal source"
+            stages={["Lexing tokens", "Parsing grammar", "Checking semantics", "Building AST"]}
+          />
+        )}
       </div>
 
       {showSettings && (
