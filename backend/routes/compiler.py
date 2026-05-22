@@ -4,15 +4,15 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, List, Any
 
-from backend.compiler.grammar import (
+from compiler.grammar import (
     GRAMMAR_RULES, FIRST_SETS, FOLLOW_SETS, LL1_TABLE,
     LR_ACTION, LR_GOTO, NON_TERMINALS, TERMINALS
 )
-from backend.compiler.lexer import Lexer
-from backend.compiler.error_handler import ErrorHandler
-from backend.compiler.parser_rd import RecursiveDescentParser
-from backend.compiler.parser_ll1 import LL1Parser
-from backend.compiler.parser_lr import LRParser
+from compiler.lexer import Lexer
+from compiler.error_handler import ErrorHandler
+from compiler.parser_rd import RecursiveDescentParser
+from compiler.parser_ll1 import LL1Parser
+from compiler.parser_lr import LRParser
 
 router = APIRouter(prefix="/compiler", tags=["compiler"])
 

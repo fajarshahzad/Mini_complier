@@ -1,11 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Dark + neon orange */
+  --bg-base: #0a0a0a;
+  --bg-elevated: #121212;
+  --bg-subtle: #1a1a1a;
+  --bg-inset: #080808;
+
+  --text-primary: #f2f2f2;
+  --text-secondary: #a8a8a8;
+  --text-muted: #6e6e6e;
+
+  --accent: #ff6600;
+  --accent-hover: #ff7722;
+  --accent-soft: rgba(255, 102, 0, 0.14);
+  --accent-muted: rgba(255, 102, 0, 0.07);
+  --accent-glow: rgba(255, 102, 0, 0.35);
+
+  --amber: #ffaa00;
+  --clay: #ffaa00;
+  --clay-soft: rgba(255, 170, 0, 0.12);
+
+  --success: #3dd68c;
+  --success-soft: rgba(61, 214, 140, 0.1);
+  --error: #ff5c4d;
+  --error-soft: rgba(255, 92, 77, 0.1);
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-accent: rgba(255, 102, 0, 0.22);
+  --border-strong: rgba(255, 102, 0, 0.35);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.55);
+  --shadow-glow: 0 0 20px var(--accent-glow);
+
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 0.2s;
+  --duration-normal: 0.35s;
+  --duration-slow: 0.5s;
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+html,
 body {
-  background-color: #0F172A;
-  color: white;
-  font-family: Arial, sans-serif;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-subtle);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* Shared motion primitives */
+@keyframes modeEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes astNodeEnter {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.mode-panel {
+  animation: modeEnter var(--duration-normal) var(--ease-out) forwards;
+}
+
+.ast-node-enter {
+  animation: astNodeEnter var(--duration-slow) var(--ease-out) backwards;
 }
