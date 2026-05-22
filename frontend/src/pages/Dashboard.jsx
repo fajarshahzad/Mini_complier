@@ -20,6 +20,102 @@ begin
   end;
   writeln(fact);
 end.`,
+  sumNumbers: `{ Short valid program adding two integers }
+program SumNumbers;
+var
+  a, b, total : integer;
+begin
+  a := 12;
+  b := 8;
+  total := a + b;
+  writeln(total);
+end.`,
+  evenOdd: `{ Valid conditional program checking parity }
+program EvenOddCheck;
+var
+  n, remainder : integer;
+begin
+  n := 14;
+  remainder := n - (n / 2) * 2;
+  if remainder = 0 then
+    writeln(n)
+  else
+    write(remainder);
+end.`,
+  maxOfThree: `{ Valid program finding the largest of three values }
+program MaxOfThree;
+var
+  a, b, c, max : integer;
+begin
+  a := 9;
+  b := 27;
+  c := 15;
+  max := a;
+  if b > max then
+    max := b;
+  if c > max then
+    max := c;
+  writeln(max);
+end.`,
+  countdown: `{ Valid while-loop countdown }
+program CountdownProg;
+var
+  counter : integer;
+begin
+  counter := 5;
+  while counter > 0 do
+  begin
+    writeln(counter);
+    counter := counter - 1;
+  end;
+end.`,
+  averageReal: `{ Valid program mixing integer and real declarations }
+program AverageProg;
+var
+  x, y, z : integer;
+var
+  average : real;
+begin
+  x := 10;
+  y := 20;
+  z := 30;
+  average := (x + y + z) / 3;
+  writeln(average);
+end.`,
+  nestedBlocks: `{ Valid program with nested begin-end blocks }
+program NestedBlocksProg;
+var
+  x, y : integer;
+begin
+  x := 3;
+  y := 4;
+  begin
+    x := x + y;
+    begin
+      y := x * 2;
+      writeln(y);
+    end;
+  end;
+end.`,
+  comparisonTrace: `{ Moderate program for parser and semantic trace views }
+program ComparisonTraceProg;
+var
+  left, right, result : integer;
+begin
+  left := 18;
+  right := 11;
+  result := 0;
+  if left > right then
+  begin
+    result := left - right;
+    writeln(result);
+  end
+  else
+  begin
+    result := right - left;
+    write(result);
+  end;
+end.`,
   syntaxError: `{ Contains syntax errors to demonstrate parser panic-mode recovery }
 program SyntaxErrProg;
 var
@@ -280,36 +376,63 @@ function Dashboard() {
     if (!scopes?.length) {
       return <p className="empty-msg">No symbols yet. Run compile.</p>;
     }
+
+    const scopesById = new Map(scopes.map((scope) => [scope.scope_id, scope]));
+    const getVisibleEntries = (scope) => {
+      const inheritedEntries =
+        scope.parent_id != null && scopesById.has(scope.parent_id)
+          ? getVisibleEntries(scopesById.get(scope.parent_id)).map((sym) => ({
+              ...sym,
+              visibility: "inherited",
+            }))
+          : [];
+
+      const localEntries = Object.values(scope.entries || {}).map((sym) => ({
+        ...sym,
+        visibility: "local",
+        origin_scope_id: scope.scope_id,
+      }));
+
+      const mergedEntries = new Map();
+      inheritedEntries.forEach((sym) => mergedEntries.set(sym.name, sym));
+      localEntries.forEach((sym) => mergedEntries.set(sym.name, sym));
+      return Array.from(mergedEntries.values());
+    };
+
     return (
       <div className="scopes-tree-wrapper">
-        {scopes.map((scope) => (
-          <div
-            className="scope-block-card"
-            key={scope.scope_id}
-            style={{ marginLeft: `${scope.scope_id * 16}px` }}
-          >
-            <div className="scope-card-header">
-              <strong>
-                Scope {scope.scope_id}: <code>{scope.scope_name}</code>
-              </strong>
-              {scope.parent_id != null && (
-                <span className="parent-scope-label">Parent: {scope.parent_id}</span>
-              )}
-            </div>
-            {Object.keys(scope.entries).length > 0 ? (
+        {scopes.map((scope) => {
+          const visibleEntries = getVisibleEntries(scope);
+          return (
+            <div
+              className="scope-block-card"
+              key={scope.scope_id}
+              style={{ marginLeft: `${Math.min(scope.scope_id, 4) * 16}px` }}
+            >
+              <div className="scope-card-header">
+                <strong>
+                  Scope {scope.scope_id}: <code>{scope.scope_name}</code>
+                </strong>
+                <span className="parent-scope-label">
+                  {scope.parent_id != null ? `Parent: ${scope.parent_id}` : "Root scope"}
+                </span>
+              </div>
+              {visibleEntries.length > 0 ? (
               <table className="output-table mini-table">
                 <thead>
                   <tr>
                     <th>Name</th>
                     <th>Kind</th>
                     <th>Type</th>
+                    <th>Visible as</th>
+                    <th>Origin</th>
                     <th>Level</th>
                     <th>Line</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.values(scope.entries).map((sym, i) => (
-                    <tr key={i}>
+                  {visibleEntries.map((sym, i) => (
+                    <tr key={`${sym.name}-${sym.origin_scope_id ?? sym.scope_level}-${i}`}>
                       <td>
                         <code>{sym.name}</code>
                       </td>
@@ -319,6 +442,12 @@ function Dashboard() {
                       <td>
                         <span className="badge-type">{sym.type}</span>
                       </td>
+                      <td>
+                        <span className={`badge-visibility ${sym.visibility || "local"}`}>
+                          {sym.visibility || "local"}
+                        </span>
+                      </td>
+                      <td>{sym.origin_scope_id ?? sym.scope_level}</td>
                       <td>{sym.scope_level}</td>
                       <td>{sym.line}</td>
                     </tr>
@@ -328,8 +457,9 @@ function Dashboard() {
             ) : (
               <p className="empty-msg">Empty scope.</p>
             )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -475,6 +605,13 @@ function Dashboard() {
                       aria-label="Sample program"
                     >
                       <option value="factorial">Factorial (valid)</option>
+                      <option value="sumNumbers">Sum numbers (short)</option>
+                      <option value="evenOdd">Even / odd check</option>
+                      <option value="maxOfThree">Maximum of three</option>
+                      <option value="countdown">Countdown loop</option>
+                      <option value="averageReal">Average with real</option>
+                      <option value="nestedBlocks">Nested blocks</option>
+                      <option value="comparisonTrace">Comparison trace</option>
                       <option value="syntaxError">Syntax errors</option>
                       <option value="semanticError">Semantic errors</option>
                     </select>

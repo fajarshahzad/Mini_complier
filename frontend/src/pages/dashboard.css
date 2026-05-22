@@ -767,6 +767,24 @@
   font-size: 11px;
 }
 
+.badge-visibility {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-visibility.local {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.badge-visibility.inherited {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
 /* —— Console output —— */
 .console-banner {
   padding: 18px 22px;
