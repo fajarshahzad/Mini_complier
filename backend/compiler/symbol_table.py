@@ -52,11 +52,26 @@ class SymbolTable:
         return False
 
     def to_dict(self):
+        visible_entries = {}
+        scope = self
+        chain = []
+        while scope:
+            chain.append(scope)
+            scope = scope.parent
+
+        for visible_scope in reversed(chain):
+            for name, entry in visible_scope.entries.items():
+                entry_data = entry.to_dict()
+                entry_data["origin_scope_id"] = visible_scope.scope_id
+                entry_data["visibility"] = "local" if visible_scope is self else "inherited"
+                visible_entries[name] = entry_data
+
         return {
             "scope_id": self.scope_id,
             "scope_name": self.scope_name,
             "parent_id": self.parent.scope_id if self.parent else None,
-            "entries": {name: entry.to_dict() for name, entry in self.entries.items()}
+            "entries": {name: entry.to_dict() for name, entry in self.entries.items()},
+            "visible_entries": visible_entries
         }
 
 class SymbolTableManager:
