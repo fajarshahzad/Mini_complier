@@ -1,4 +1,4 @@
-# Compiler Construction Suite
+# Mini Compiler
 
 A modern and interactive compiler construction platform built using **React**, **FastAPI**, and multiple parsing techniques. This project provides a complete environment for lexical analysis, syntax analysis, parsing visualization, token generation, grammar validation, and compiler learning.
 
