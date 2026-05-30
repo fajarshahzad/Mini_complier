@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../services/api";
 import CompilerLoader from "../components/CompilerLoader";
 import "./dashboard.css";
@@ -146,10 +146,15 @@ begin
 end.`,
 };
 
-const MODES = [
-  { id: "editor", label: "Editor", icon: "editor" },
-  { id: "engine", label: "Engine", icon: "engine" },
-  { id: "console", label: "Console", icon: "console" },
+const PAGES = [
+  { id: "editor", path: "/dashboard", label: "Source Editor", icon: "editor" },
+  { id: "lexical-analyzer", path: "/dashboard/lexical-analyzer", label: "Lexical Analyzer", icon: "tokenizer" },
+  { id: "symbol-table", path: "/dashboard/symbol-table", label: "Symbol Table", icon: "symbols" },
+  { id: "ast", path: "/dashboard/ast", label: "AST Viewer", icon: "ast" },
+  { id: "recursive-descent-parser", path: "/dashboard/recursive-descent-parser", label: "Recursive Descent Parser", icon: "predictive" },
+  { id: "ll1-parser", path: "/dashboard/ll1-parser", label: "LL(1) Parser", icon: "ll1" },
+  { id: "lr1-parser", path: "/dashboard/lr1-parser", label: "LR(1) Parser", icon: "lr1" },
+  { id: "console", path: "/dashboard/console", label: "Console", icon: "console" },
 ];
 
 const MIN_LOADER_MS = 1100;
@@ -179,6 +184,52 @@ function NavIcon({ type }) {
       </svg>
     );
   }
+  if (type === "tokenizer") {
+    return (
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 7h16" />
+        <path d="M4 12h10" />
+        <path d="M4 17h16" />
+        <circle cx="18" cy="12" r="2" />
+      </svg>
+    );
+  }
+  if (type === "symbols") {
+    return (
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8 6h13" />
+        <path d="M8 12h13" />
+        <path d="M8 18h13" />
+        <path d="M3 6h.01" />
+        <path d="M3 12h.01" />
+        <path d="M3 18h.01" />
+      </svg>
+    );
+  }
+  if (type === "ast") {
+    return (
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3v6" />
+        <path d="M6 15v6" />
+        <path d="M18 15v6" />
+        <path d="M12 9 6 15" />
+        <path d="m12 9 6 6" />
+        <circle cx="12" cy="3" r="2" />
+        <circle cx="6" cy="15" r="2" />
+        <circle cx="18" cy="15" r="2" />
+      </svg>
+    );
+  }
+  if (type === "predictive" || type === "ll1" || type === "lr1") {
+    return (
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 4h16v5H4z" />
+        <path d="M4 15h16v5H4z" />
+        <path d="M8 9v6" />
+        <path d="M16 9v6" />
+      </svg>
+    );
+  }
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="4 17 10 11 4 5" />
@@ -189,7 +240,6 @@ function NavIcon({ type }) {
 
 function Dashboard() {
   const [code, setCode] = useState(SAMPLES.factorial);
-  const [workspaceMode, setWorkspaceMode] = useState("editor");
   const [username, setUsername] = useState("Guest");
   const [grammarData, setGrammarData] = useState(null);
   const [compilationResult, setCompilationResult] = useState(null);
@@ -204,9 +254,16 @@ function Dashboard() {
   const [astGeneration, setAstGeneration] = useState(0);
 
   const navigate = useNavigate();
+  const { page } = useParams();
+  const activePage = page || "editor";
+  const pageExists = PAGES.some((item) => item.id === activePage);
   const errorCount = compilationResult?.errors?.length || 0;
 
   useEffect(() => {
+    if (!pageExists) {
+      navigate("/dashboard", { replace: true });
+      return;
+    }
     if (!api.isAuthenticated()) {
       navigate("/");
       return;
@@ -223,7 +280,7 @@ function Dashboard() {
 
     return () => clearTimeout(launchTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate]);
+  }, [navigate, pageExists]);
 
   const handleLogout = () => {
     api.logout();
@@ -238,7 +295,7 @@ function Dashboard() {
       const res = await api.compile(code);
       setCompilationResult(res);
       if (res.errors?.length > 0) {
-        setWorkspaceMode("console");
+        navigate("/dashboard/console");
       } else if (res.ast) {
         setAstGeneration((g) => g + 1);
       }
@@ -256,15 +313,27 @@ function Dashboard() {
     if (type) setCode(SAMPLES[type]);
   };
 
-  const renderASTNode = (node, depth = 0) => {
+  const renderASTNode = (node, depth = 0, branchLabel = "") => {
     if (!node) return null;
-    const delay = Math.min(depth * 40, 400);
+    const delay = Math.min(depth * 90, 900);
+    const branches = [
+      ...(node.children || []).map((child) => ({ label: "", node: child })),
+      node.condition ? { label: "condition", node: node.condition } : null,
+      node.then ? { label: "then", node: node.then } : null,
+      node.else ? { label: "else", node: node.else } : null,
+      node.body ? { label: "body", node: node.body } : null,
+      node.left ? { label: "left", node: node.left } : null,
+      node.right ? { label: "right", node: node.right } : null,
+      node.expression ? { label: "expr", node: node.expression } : null,
+    ].filter(Boolean);
+
     return (
-      <div
+      <li
         className="ast-tree-node ast-node-enter"
         key={`${node.node_type}-${depth}-${node.name || node.value || ""}`}
         style={{ animationDelay: `${delay}ms` }}
       >
+        {branchLabel && <span className="edge-label">{branchLabel}</span>}
         <div className={`node-badge ${node.node_type}`}>
           <strong>{node.node_type}</strong>
           {node.name && <span className="node-val"> ({node.name})</span>}
@@ -278,61 +347,18 @@ function Dashboard() {
             <span className="node-val"> (Vars: {node.variables.join(", ")})</span>
           )}
         </div>
-        {((node.children?.length > 0) ||
-          node.condition ||
-          node.then ||
-          node.else ||
-          node.left ||
-          node.right ||
-          node.expression ||
-          node.body) && (
-          <div className="node-children">
-            {node.children?.map((child, i) => renderASTNode(child, depth + 1 + i))}
-            {node.condition && (
-              <div className="ast-child-wrapper">
-                <span className="edge-label">condition</span>
-                {renderASTNode(node.condition, depth + 1)}
-              </div>
+        {branches.length > 0 && (
+          <ul className="node-children">
+            {branches.map((branch, index) =>
+              renderASTNode(
+                branch.node,
+                depth + 1 + index * 0.35,
+                branch.label
+              )
             )}
-            {node.then && (
-              <div className="ast-child-wrapper">
-                <span className="edge-label">then</span>
-                {renderASTNode(node.then, depth + 1)}
-              </div>
-            )}
-            {node.else && (
-              <div className="ast-child-wrapper">
-                <span className="edge-label">else</span>
-                {renderASTNode(node.else, depth + 1)}
-              </div>
-            )}
-            {node.body && (
-              <div className="ast-child-wrapper">
-                <span className="edge-label">body</span>
-                {renderASTNode(node.body, depth + 1)}
-              </div>
-            )}
-            {node.left && (
-              <div className="ast-child-wrapper">
-                <span className="edge-label">left</span>
-                {renderASTNode(node.left, depth + 1)}
-              </div>
-            )}
-            {node.right && (
-              <div className="ast-child-wrapper">
-                <span className="edge-label">right</span>
-                {renderASTNode(node.right, depth + 1)}
-              </div>
-            )}
-            {node.expression && (
-              <div className="ast-child-wrapper">
-                <span className="edge-label">expr</span>
-                {renderASTNode(node.expression, depth + 1)}
-              </div>
-            )}
-          </div>
+          </ul>
         )}
-      </div>
+      </li>
     );
   };
 
@@ -575,13 +601,13 @@ function Dashboard() {
       </header>
 
       <div className="dashboard-body">
-        <nav className="workspace-nav" aria-label="Workspace modes">
-          {MODES.map((mode) => (
+        <nav className="workspace-nav" aria-label="Compiler pages">
+          {PAGES.map((mode) => (
             <button
               key={mode.id}
               type="button"
-              className={`nav-item ${workspaceMode === mode.id ? "active" : ""}`}
-              onClick={() => setWorkspaceMode(mode.id)}
+              className={`nav-item ${activePage === mode.id ? "active" : ""}`}
+              onClick={() => navigate(mode.path)}
             >
               <NavIcon type={mode.icon} />
               <span>{mode.label}</span>
@@ -593,7 +619,7 @@ function Dashboard() {
         </nav>
 
         <main className="workspace-main">
-          {workspaceMode === "editor" && (
+          {activePage === "editor" && (
             <div key="editor" className="mode-panel editor-mode">
               <div className="editor-column">
                 <div className="panel-toolbar">
@@ -649,55 +675,110 @@ function Dashboard() {
             </div>
           )}
 
-          {workspaceMode === "engine" && (
+          {activePage === "lexical-analyzer" && (
+            <div key="lexical-analyzer" className="mode-panel page-mode">
+              <section className="engine-section">
+                <div className="page-title-row">
+                  <h4>Lexical Analyzer</h4>
+                  <button type="button" className="btn-compile" onClick={handleCompile} disabled={loading}>
+                    Run analyzer
+                  </button>
+                </div>
+                <div className="table-page-panel">{renderTokenTable()}</div>
+              </section>
+            </div>
+          )}
+
+          {activePage === "symbol-table" && (
+            <div key="symbol-table" className="mode-panel page-mode">
+              <section className="engine-section">
+                <div className="page-title-row">
+                  <h4>Symbol Table</h4>
+                  <button type="button" className="btn-compile" onClick={handleCompile} disabled={loading}>
+                    Recompile
+                  </button>
+                </div>
+                {renderSymbolTable()}
+              </section>
+            </div>
+          )}
+
+          {["ast", "recursive-descent-parser", "ll1-parser", "lr1-parser"].includes(activePage) && (
             <div key="engine" className="mode-panel engine-mode">
               {error && <div className="panel-alert error" style={{ margin: "16px 28px 0" }}>{error}</div>}
 
+              {activePage === "ast" && (
               <section className="engine-section">
-                <h4>Parse structure</h4>
-                <div className="engine-split">
-                  <div className="engine-split-panel">
-                    <h5 style={{ margin: "0 0 12px", fontSize: 12, color: "var(--text-muted)" }}>Abstract syntax tree</h5>
-                    {compilationResult?.ast ? (
-                      <div className="ast-tree-root" key={astGeneration}>
+                <div className="page-title-row">
+                  <h4>Abstract Syntax Tree</h4>
+                  <button type="button" className="btn-compile" onClick={handleCompile} disabled={loading}>
+                    Build AST
+                  </button>
+                </div>
+                <div className="engine-split-panel ast-only-panel">
+                  {compilationResult?.ast ? (
+                    <div className="ast-tree-root" key={astGeneration}>
+                      <ul className="ast-tree">
                         {renderASTNode(compilationResult.ast)}
-                      </div>
-                    ) : (
-                      <p className="empty-msg">Compile successfully to view the AST.</p>
-                    )}
-                  </div>
-                  <div className="engine-split-panel">
-                    <h5 style={{ margin: "0 0 12px", fontSize: 12, color: "var(--text-muted)" }}>Recursive descent trace</h5>
-                    {compilationResult?.rd_trace?.length > 0 ? (
-                      <ul className="trace-list">
-                        {compilationResult.rd_trace.map((step, idx) => (
-                          <li key={idx} className={step.startsWith("Enter") ? "trace-enter" : "trace-exit"}>
-                            <code>{step}</code>
-                          </li>
-                        ))}
                       </ul>
-                    ) : (
-                      <p className="empty-msg">No trace logged.</p>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <p className="empty-msg">Compile successfully to view the AST.</p>
+                  )}
                 </div>
               </section>
+              )}
 
+              {activePage === "recursive-descent-parser" && (
               <section className="engine-section">
-                <h4>Parser traces</h4>
+                <div className="page-title-row">
+                  <h4>Recursive Descent Parser</h4>
+                  <button type="button" className="btn-compile" onClick={handleCompile} disabled={loading}>
+                    Run parser
+                  </button>
+                </div>
+                <div className="trace-panel wide-panel">
+                  {compilationResult?.rd_trace?.length > 0 ? (
+                    <ul className="trace-list">
+                      {compilationResult.rd_trace.map((step, idx) => (
+                        <li key={idx} className={step.startsWith("Enter") ? "trace-enter" : "trace-exit"}>
+                          <code>{step}</code>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="empty-msg">No recursive descent trace logged.</p>
+                  )}
+                </div>
+              </section>
+              )}
+
+              {(activePage === "ll1-parser" || activePage === "lr1-parser") && (
+              <section className="engine-section">
+                <div className="page-title-row">
+                  <h4>{activePage === "ll1-parser" ? "LL(1) Parser" : "LR(1) Parser"}</h4>
+                  <button type="button" className="btn-compile" onClick={handleCompile} disabled={loading}>
+                    {activePage === "ll1-parser" ? "Run LL(1)" : "Run LR(1)"}
+                  </button>
+                </div>
                 <div className="traces-grid">
-                  <div className="trace-panel">
+                  {activePage === "ll1-parser" && (
+                  <div className="trace-panel wide-panel">
                     <h5>LL(1) stack</h5>
                     {renderTraceTable(compilationResult?.ll1_trace, compilationResult?.ll1_success, "LL(1)")}
                   </div>
-                  <div className="trace-panel">
-                    <h5>SLR(1) shift-reduce</h5>
-                    {renderTraceTable(compilationResult?.lr_trace, compilationResult?.lr_success, "SLR(1)")}
+                  )}
+                  {activePage === "lr1-parser" && (
+                  <div className="trace-panel wide-panel">
+                    <h5>LR(1) shift-reduce</h5>
+                    {renderTraceTable(compilationResult?.lr_trace, compilationResult?.lr_success, "LR(1)")}
                   </div>
+                  )}
                 </div>
               </section>
+              )}
 
-              {grammarData && (
+              {activePage === "predictive-parser" && grammarData && (
                 <section className="engine-section">
                   <button
                     type="button"
@@ -851,7 +932,7 @@ function Dashboard() {
             </div>
           )}
 
-          {workspaceMode === "console" && (
+          {activePage === "console" && (
             <div key="console" className="mode-panel console-mode">
               <h4>Compilation output</h4>
               {error && <div className="panel-alert error">{error}</div>}
