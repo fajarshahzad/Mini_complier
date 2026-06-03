@@ -29,3 +29,9 @@ def home():
         "status": "online",
         "message": "Mini Pascal Compiler API is running. Use /auth and /compiler routes."
     }
+
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("app:app", host="0.0.0.0", port=port)
