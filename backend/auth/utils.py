@@ -3,7 +3,9 @@ from datetime import datetime, timedelta
 from jose import jwt, JWTError
 from typing import Optional
 
-SECRET_KEY = "secret-mini-compiler-key-12345"
+import os
+
+SECRET_KEY = os.getenv("SECRET_KEY", "secret-mini-compiler-key-12345")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 360
 
