@@ -99,6 +99,49 @@ class Lexer:
             
         return active_content[ptr]
 
+    def _current_source_index(self):
+        """Return the absolute source index for the next character."""
+        active_content = self.buffer1 if self.active_buffer == 1 else self.buffer2
+        return self.source_ptr - len(active_content) + self.buffer_ptr
+
+    def _peek_source_offset(self, offset):
+        idx = self._current_source_index() + offset
+        if idx < self.source_len:
+            return self.source[idx]
+        return None
+
+    def _has_valid_exponent(self):
+        marker = self._peek_char()
+        if marker not in ("e", "E"):
+            return False
+
+        first_after_marker = self._peek_source_offset(1)
+        second_after_marker = self._peek_source_offset(2)
+        return (
+            first_after_marker is not None
+            and (
+                first_after_marker.isdigit()
+                or (first_after_marker in ("+", "-") and second_after_marker is not None and second_after_marker.isdigit())
+            )
+        )
+
+    def _consume_exponent(self, lexeme):
+        if not self._has_valid_exponent():
+            return lexeme, False
+
+        lexeme += self._next_char() # consume e/E
+        if self._peek_char() in ("+", "-"):
+            lexeme += self._next_char()
+
+        while True:
+            c = self._peek_char()
+            if c and c.isdigit():
+                lexeme += self._next_char()
+            else:
+                break
+
+        return lexeme, True
+
     def get_next_token(self):
         """Lexical analyzer main state machine loop."""
         while True:
@@ -161,22 +204,36 @@ class Lexer:
                     else:
                         break
                 
-                # Check for decimal point for REAL
+                # Check for decimal point for REAL. A number like 12.5 or 12.
+                # is real, while the program terminator in "end." stays ".".
                 if self._peek_char() == '.':
-                    # Peek next next to ensure it's not the end of a program statement like "end."
-                    # We can look directly at source index
-                    next_idx = self.source_ptr if self.buffer_ptr >= len(self.buffer1 if self.active_buffer == 1 else self.buffer2) else self.source_ptr - (len(self.buffer1 if self.active_buffer == 1 else self.buffer2) - self.buffer_ptr)
-                    if next_idx + 1 < self.source_len and self.source[next_idx + 1].isdigit():
-                        lexeme += self._next_char() # consume '.'
-                        while True:
-                            c = self._peek_char()
-                            if c and c.isdigit():
-                                lexeme += self._next_char()
-                            else:
-                                break
-                        return Token("REAL_CONST", lexeme, self.lexeme_begin_line, self.lexeme_begin_col)
+                    lexeme += self._next_char() # consume '.'
+                    while True:
+                        c = self._peek_char()
+                        if c and c.isdigit():
+                            lexeme += self._next_char()
+                        else:
+                            break
+                    lexeme, _ = self._consume_exponent(lexeme)
+                    return Token("REAL_CONST", lexeme, self.lexeme_begin_line, self.lexeme_begin_col)
+
+                lexeme, has_exponent = self._consume_exponent(lexeme)
+                if has_exponent:
+                    return Token("REAL_CONST", lexeme, self.lexeme_begin_line, self.lexeme_begin_col)
                 
                 return Token("INT_CONST", lexeme, self.lexeme_begin_line, self.lexeme_begin_col)
+
+            # Real constants that start with a decimal point, e.g. .5
+            if char == '.' and self._peek_source_offset(1) and self._peek_source_offset(1).isdigit():
+                lexeme = self._next_char() # consume '.'
+                while True:
+                    c = self._peek_char()
+                    if c and c.isdigit():
+                        lexeme += self._next_char()
+                    else:
+                        break
+                lexeme, _ = self._consume_exponent(lexeme)
+                return Token("REAL_CONST", lexeme, self.lexeme_begin_line, self.lexeme_begin_col)
 
             # 3. Character Constants: 'a'
             if char == "'":
@@ -194,7 +251,7 @@ class Lexer:
                 self._next_char() # consume ':'
                 if self._peek_char() == '=':
                     self._next_char() # consume '='
-                    return Token(":=", ":=", self.lexeme_begin_line, self.lexeme_begin_col)
+                    return Token("ASSIGN_OP", ":=", self.lexeme_begin_line, self.lexeme_begin_col)
                 return Token(":", ":", self.lexeme_begin_line, self.lexeme_begin_col)
                 
             if char == '<':

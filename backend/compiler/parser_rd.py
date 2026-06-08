@@ -186,7 +186,7 @@ class RecursiveDescentParser:
             # Epsilon (empty statement)
             return None
 
-    # Assignment -> IDENTIFIER := Expression
+    # Assignment -> IDENTIFIER ASSIGN_OP Expression
     def parse_Assignment(self):
         self.log_call("Assignment")
         var_name = self.current_token.value
@@ -202,7 +202,7 @@ class RecursiveDescentParser:
                 line, col
             )
             
-        self.match(":=")
+        self.match("ASSIGN_OP")
         expr = self.parse_Expression()
         
         # Simple Type Compatibility Check

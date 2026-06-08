@@ -47,7 +47,7 @@ GRAMMAR_RULES = [
     ("Statement", []),
     
     # 21. Assignment
-    ("Assignment", ["IDENTIFIER", ":=", "Expression"]),
+    ("Assignment", ["IDENTIFIER", "ASSIGN_OP", "Expression"]),
     
     # 22. IfStmt (Dangling else resolved by parser state preferences)
     ("IfStmt", ["if", "Condition", "then", "Statement", "ElsePart"]),

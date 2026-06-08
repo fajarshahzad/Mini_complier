@@ -564,6 +564,11 @@
   background: var(--success-soft);
 }
 
+.tok-type.ASSIGN_OP {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
 .table-responsive {
   overflow-x: auto;
   border: 1px solid var(--border);
